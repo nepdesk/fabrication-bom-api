@@ -51,11 +51,14 @@ logger = logging.getLogger("bom_api")
 app = FastAPI(
     title="Fabrication BOM API by NEPDESK",
     description=(
-        "An open-source FastAPI microservice tailored for heavy engineering, boiler, "
-        "and piping fabrication. This service accepts bulk .zip archive uploads containing "
-        "AutoCAD drawing directories (with .dwg and .dxf formats), automatically converts "
-        "drawings on the fly, and extracts structured Bill of Materials (BOM) data "
-        "for downstream fabrication and inventory pipelines."
+        "An open-source FastAPI microservice tailored for "
+        "heavy engineering, boiler, and piping fabrication. "
+        "This service accepts bulk .zip archive uploads "
+        "containing AutoCAD drawing directories (with .dwg "
+        "and .dxf formats), automatically converts drawings "
+        "on the fly, and extracts structured Bill of "
+        "Materials (BOM) data for downstream fabrication "
+        "and inventory pipelines."
     ),
     version="1.0.0",
 )
