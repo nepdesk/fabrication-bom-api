@@ -27,12 +27,17 @@ class BOMItem(BaseModel):
 
     sub_project: str = Field(..., description="Folder name directly above the DXF file")
     drawing: str = Field(..., description="DXF filename without extension")
-    category: str = Field(default="Other", description="BOM item category: Pipe, Fitting, Gasket, Hardware, Other")
+    category: str = Field(
+        default="Other",
+        description="BOM item category: Pipe, Fitting, Gasket, Hardware, Other",
+    )
     pno: str = Field(default="", description="Part / item / serial number")
     description: str = Field(default="", description="Part description")
     size: str = Field(default="", description="Size or specification")
     material: str = Field(default="", description="Material grade")
-    standard: str = Field(default="", description="Dimensional standard (e.g. ASME B36.10)")
+    standard: str = Field(
+        default="", description="Dimensional standard (e.g. ASME B36.10)"
+    )
     qty: float | None = Field(default=None, description="Quantity value")
     qty_unit: str = Field(default="", description="Unit for quantity (e.g. M, Nos)")
     weight: float | None = Field(default=None, description="Weight value")
@@ -56,4 +61,5 @@ class ErrorResponse(BaseModel):
 
 class ProjectCreate(BaseModel):
     """Schema for creating a new project."""
+
     name: str = Field(..., description="Name of the project")

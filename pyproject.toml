@@ -1,0 +1,25 @@
+[tool.ruff]
+# Set the maximum line length
+line-length = 88
+
+# Target Python 3.11
+target-version = "py311"
+
+# Exclude common sensitive or unnecessary directories
+exclude = [
+    ".git",
+    ".github",
+    "__pycache__",
+    "bom.db",
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.lint]
+# Enable Pyflakes (F) and standard pycodestyle (E, W)
+select = ["E", "F", "W"]
+ignore = []
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []

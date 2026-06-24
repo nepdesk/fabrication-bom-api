@@ -27,7 +27,7 @@ from app.models.database import (
     save_bom_data_for_project,
     get_bom_data_for_project,
     clear_project_data,
-    clear_sub_project_data
+    clear_sub_project_data,
 )
 from app.services.converter import DWGConversionError, convert_all_dwg_in_directory
 from app.services.extractor import BOMExtractor
@@ -47,7 +47,9 @@ router = APIRouter(prefix="/api", tags=["extraction"])
 )
 async def extract_bom(
     project: str,
-    file: UploadFile = File(..., description="A .zip archive containing .dwg or .dxf files")
+    file: UploadFile = File(
+        ..., description="A .zip archive containing .dwg or .dxf files"
+    ),
 ):
     """
     Receive a ZIP file containing `.dwg` and/or `.dxf` drawings.
@@ -65,7 +67,7 @@ async def extract_bom(
         # --- Save ZIP to a debug directory in the workspace root -----------
         debug_dir = Path(__file__).parent.parent.parent / "debug_files"
         debug_dir.mkdir(exist_ok=True)
-        
+
         # Clean up any existing files in debug_dir first
         for p in debug_dir.iterdir():
             try:
@@ -97,9 +99,7 @@ async def extract_bom(
         logger.info("ZIP extracted to %s", extract_dir)
 
         # --- Convert DWG → DXF (if any) ----------------------------------
-        dwg_files = [
-            p for p in extract_dir.rglob("*") if p.suffix.lower() == ".dwg"
-        ]
+        dwg_files = [p for p in extract_dir.rglob("*") if p.suffix.lower() == ".dwg"]
         if dwg_files:
             logger.info("Found %d DWG file(s) — converting to DXF...", len(dwg_files))
             try:
@@ -109,9 +109,7 @@ async def extract_bom(
                 raise HTTPException(status_code=500, detail=str(e))
 
         # --- Discover .dxf files (original + converted) ------------------
-        dxf_files = [
-            p for p in extract_dir.rglob("*") if p.suffix.lower() == ".dxf"
-        ]
+        dxf_files = [p for p in extract_dir.rglob("*") if p.suffix.lower() == ".dxf"]
 
         if not dxf_files:
             raise HTTPException(
@@ -123,15 +121,17 @@ async def extract_bom(
 
         # --- Process DXF files in parallel -------------------------------
         def process_single_dxf(dxf_path: Path) -> list[BOMItem]:
-            drawing_name = dxf_path.stem.lstrip('_').strip()
+            drawing_name = dxf_path.stem.lstrip("_").strip()
             parent = dxf_path.parent
             if parent == extract_dir or parent.name == "extracted":
                 parts = drawing_name.split("-")
-                sub_project = parts[0].lstrip('_').strip() if parts else drawing_name
+                sub_project = parts[0].lstrip("_").strip() if parts else drawing_name
             else:
-                sub_project = parent.name.lstrip('_').strip()
+                sub_project = parent.name.lstrip("_").strip()
 
-            logger.info("Processing: sub_project=%s  drawing=%s", sub_project, drawing_name)
+            logger.info(
+                "Processing: sub_project=%s  drawing=%s", sub_project, drawing_name
+            )
             try:
                 extractor = BOMExtractor(dxf_path)
                 rows = extractor.extract()
@@ -158,19 +158,31 @@ async def extract_bom(
 
         files_processed = len(dxf_files)
 
-        # --- Sort items naturally: sub_project, drawing, category priority, pno numeric order ---
-        CATEGORY_ORDER = {"Pipe": 0, "Fitting": 1, "Gasket": 2, "Hardware": 3, "Other": 4}
+        # Sort items naturally: sub_project, drawing,
+        # category priority, pno numeric order
+        CATEGORY_ORDER = {
+            "Pipe": 0,
+            "Fitting": 1,
+            "Gasket": 2,
+            "Hardware": 3,
+            "Other": 4,
+        }
 
         def natural_sort_key(item: BOMItem):
             cat_weight = CATEGORY_ORDER.get(item.category, 5)
             # Split pno into numeric and non-numeric tokens for natural sorting
             pno_parts = []
-            for part in re.split(r'([^0-9]+)', item.pno):
+            for part in re.split(r"([^0-9]+)", item.pno):
                 if part.isdigit():
                     pno_parts.append((0, int(part)))
                 else:
                     pno_parts.append((1, part.lower()))
-            return (item.sub_project.lower(), item.drawing.lower(), cat_weight, pno_parts)
+            return (
+                item.sub_project.lower(),
+                item.drawing.lower(),
+                cat_weight,
+                pno_parts,
+            )
 
         all_items.sort(key=natural_sort_key)
 
@@ -178,7 +190,9 @@ async def extract_bom(
         try:
             dict_items = [item.model_dump() for item in all_items]
             save_bom_data_for_project(project, dict_items, files_processed)
-            logger.info("Successfully persisted BOM data in SQLite for project %s.", project)
+            logger.info(
+                "Successfully persisted BOM data in SQLite for project %s.", project
+            )
         except Exception:
             logger.exception("Failed to save BOM data to SQLite.")
 
@@ -244,10 +258,20 @@ async def delete_saved_bom(project: str, sub_project: str | None = None):
     try:
         if sub_project:
             clear_sub_project_data(project, sub_project)
-            return {"status": "success", "detail": f"BOM data for sub-project '{sub_project}' in project '{project}' cleared."}
+            return {
+                "status": "success",
+                "detail": (
+                    f"BOM data for sub-project"
+                    f" '{sub_project}' in project"
+                    f" '{project}' cleared."
+                ),
+            }
         else:
             clear_project_data(project)
-            return {"status": "success", "detail": f"BOM data for project '{project}' cleared."}
+            return {
+                "status": "success",
+                "detail": f"BOM data for project '{project}' cleared.",
+            }
     except Exception as e:
         logger.exception("Failed to clear BOM data from SQLite.")
         return JSONResponse(

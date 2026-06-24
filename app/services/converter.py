@@ -57,6 +57,7 @@ def _find_converter() -> str | None:
     # 3. Check if ezdxf's odafc addon is functional
     try:
         from ezdxf.addons import odafc
+
         if odafc.is_available():
             return "odafc"
     except (ImportError, Exception):
@@ -104,7 +105,9 @@ def convert_dwg_to_dxf(dwg_path: Path, output_dir: Path | None = None) -> Path:
             "  • ODA File Converter: https://www.opendesign.com/guestfiles/oda_file_converter"
         )
 
-    logger.info("Converting %s → %s  (using %s)", dwg_path.name, dxf_path.name, converter)
+    logger.info(
+        "Converting %s → %s  (using %s)", dwg_path.name, dxf_path.name, converter
+    )
 
     if converter == "dwg2dxf":
         _convert_with_dwg2dxf(dwg_path, dxf_path)
@@ -114,11 +117,11 @@ def convert_dwg_to_dxf(dwg_path: Path, output_dir: Path | None = None) -> Path:
         _convert_with_ezdxf_odafc(dwg_path, dxf_path)
 
     if not dxf_path.exists():
-        raise DWGConversionError(
-            f"Conversion produced no output for {dwg_path.name}"
-        )
+        raise DWGConversionError(f"Conversion produced no output for {dwg_path.name}")
 
-    logger.info("Converted successfully: %s (%d bytes)", dxf_path.name, dxf_path.stat().st_size)
+    logger.info(
+        "Converted successfully: %s (%d bytes)", dxf_path.name, dxf_path.stat().st_size
+    )
     return dxf_path
 
 
@@ -132,7 +135,8 @@ def convert_all_dwg_in_directory(root_dir: Path) -> list[Path]:
     dwg_files = list(root_dir.rglob("*.dwg"))
     # Also match case-insensitive
     dwg_files.extend(
-        p for p in root_dir.rglob("*")
+        p
+        for p in root_dir.rglob("*")
         if p.suffix.lower() == ".dwg" and p not in dwg_files
     )
 
@@ -148,7 +152,9 @@ def convert_all_dwg_in_directory(root_dir: Path) -> list[Path]:
             "  • ODA File Converter: https://www.opendesign.com/guestfiles/oda_file_converter"
         )
 
-    logger.info("Found %d DWG file(s) to convert (converter: %s)", len(dwg_files), converter)
+    logger.info(
+        "Found %d DWG file(s) to convert (converter: %s)", len(dwg_files), converter
+    )
 
     from concurrent.futures import ThreadPoolExecutor
 
@@ -168,6 +174,7 @@ def convert_all_dwg_in_directory(root_dir: Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 # Backend converters
 # ---------------------------------------------------------------------------
+
 
 def _convert_with_dwg2dxf(dwg_path: Path, dxf_path: Path) -> None:
     """Convert using LibreDWG's dwg2dxf command-line tool."""
@@ -199,10 +206,10 @@ def _convert_with_oda_cli(dwg_path: Path, dxf_path: Path) -> None:
         "ODAFileConverter",
         input_dir,
         output_dir,
-        "ACAD2018",   # output DXF version
-        "DXF",        # output type
-        "0",          # recurse: 0 = no
-        "1",          # audit: 1 = yes
+        "ACAD2018",  # output DXF version
+        "DXF",  # output type
+        "0",  # recurse: 0 = no
+        "1",  # audit: 1 = yes
         f"*.{dwg_path.suffix.lstrip('.')}",
     ]
     result = subprocess.run(
@@ -222,6 +229,7 @@ def _convert_with_ezdxf_odafc(dwg_path: Path, dxf_path: Path) -> None:
     """Convert using ezdxf's odafc addon (wraps ODA File Converter)."""
     try:
         from ezdxf.addons import odafc
+
         odafc.convert(str(dwg_path), str(dxf_path))
     except Exception as e:
         raise DWGConversionError(

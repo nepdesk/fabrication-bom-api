@@ -40,32 +40,73 @@ logger = logging.getLogger("bom_extractor")
 # Key represents canonical field, values are uppercase alphanumeric-only patterns.
 HEADER_PATTERNS_NORM: dict[str, list[str]] = {
     "pno": ["PNO", "SRNO", "SLNO", "SNO", "ITEMNO", "ITEM", "NO"],
-    "description": ["DESCRIPTION", "DESC", "COMPONENT", "PARTDESCRIPTION", "PARTDESC", "NAME", "DISCRIPTION"],
+    "description": [
+        "DESCRIPTION",
+        "DESC",
+        "COMPONENT",
+        "PARTDESCRIPTION",
+        "PARTDESC",
+        "NAME",
+        "DISCRIPTION",
+    ],
     "size": ["SIZE", "SPEC", "SPECIFICATION", "DIMENSION", "DIM", "NB", "NOMINALSIZE"],
     "material": ["MATERIAL", "MATL", "MAT", "GRADE", "MATERIALGRADE"],
     "standard": ["DIMSTANDARD", "DIMENSIONALSTANDARD", "STANDARD", "STD"],
-    "qty": ["QTYLENGTH", "QTY", "QTYNOS", "QTYNO", "QUANTITY", "LENGTH", "NOS", "COUNT"],
-    "weight": ["WEIGHTKGS", "WEIGHTKG", "WEIGHT", "WT", "UNITWEIGHT", "UNITWT", "TOTALWEIGHT", "TOTALWT", "MASS"],
+    "qty": [
+        "QTYLENGTH",
+        "QTY",
+        "QTYNOS",
+        "QTYNO",
+        "QUANTITY",
+        "LENGTH",
+        "NOS",
+        "COUNT",
+    ],
+    "weight": [
+        "WEIGHTKGS",
+        "WEIGHTKG",
+        "WEIGHT",
+        "WT",
+        "UNITWEIGHT",
+        "UNITWT",
+        "TOTALWEIGHT",
+        "TOTALWT",
+        "MASS",
+    ],
 }
 
 # Flat tag map for block attribute matching (Strategy 1)
 TAG_MAP: dict[str, str] = {
-    "PNO": "pno", "PART_NO": "pno", "PARTNO": "pno", "SRNO": "pno",
-    "PART_NUMBER": "pno", "ITEM": "pno", "ITEM_NO": "pno",
-    "DESC": "description", "DESCRIPTION": "description",
-    "SIZE": "size", "SPEC": "size",
-    "MATL": "material", "MATERIAL": "material", "MAT": "material",
-    "GRADE": "material", "MATERIAL_GRADE": "material",
-    "QTY": "qty", "QUANTITY": "qty", "NOS": "qty", "COUNT": "qty",
-    "WEIGHT": "weight", "WT": "weight", "MASS": "weight",
-    "STANDARD": "standard", "STD": "standard",
+    "PNO": "pno",
+    "PART_NO": "pno",
+    "PARTNO": "pno",
+    "SRNO": "pno",
+    "PART_NUMBER": "pno",
+    "ITEM": "pno",
+    "ITEM_NO": "pno",
+    "DESC": "description",
+    "DESCRIPTION": "description",
+    "SIZE": "size",
+    "SPEC": "size",
+    "MATL": "material",
+    "MATERIAL": "material",
+    "MAT": "material",
+    "GRADE": "material",
+    "MATERIAL_GRADE": "material",
+    "QTY": "qty",
+    "QUANTITY": "qty",
+    "NOS": "qty",
+    "COUNT": "qty",
+    "WEIGHT": "weight",
+    "WT": "weight",
+    "MASS": "weight",
+    "STANDARD": "standard",
+    "STD": "standard",
 }
 
 # Patterns marking the END of the BOM table
 _END_MARKERS = re.compile(
-    r"TOTAL\s*(PIPE\s*LENGTH|WEIGHT|WT)|"
-    r"%%U(NOTES|HOLD|REF)|"
-    r"^\*?\s*NOTE",
+    r"TOTAL\s*(PIPE\s*LENGTH|WEIGHT|WT)|" r"%%U(NOTES|HOLD|REF)|" r"^\*?\s*NOTE",
     re.IGNORECASE,
 )
 
@@ -151,11 +192,54 @@ def classify_category(description: str) -> str:
     desc = description.upper()
     if any(kw in desc for kw in ("PIPE", "TUBE")):
         return "Pipe"
-    if any(kw in desc for kw in ("ELBOW", "ELB", "TEE", "REDUCER", "RED", "RDC", "RDUC", "CAP", "COUPLING", "CPLG", "UNION", "OLET", "BEND", "CROSS", "FLANGE", "FLG", "NIPPLE", "NIP", "WELDOLET", "SOCKOLET", "THREADOLET", "VALVE", "VLV")):
+    if any(
+        kw in desc
+        for kw in (
+            "ELBOW",
+            "ELB",
+            "TEE",
+            "REDUCER",
+            "RED",
+            "RDC",
+            "RDUC",
+            "CAP",
+            "COUPLING",
+            "CPLG",
+            "UNION",
+            "OLET",
+            "BEND",
+            "CROSS",
+            "FLANGE",
+            "FLG",
+            "NIPPLE",
+            "NIP",
+            "WELDOLET",
+            "SOCKOLET",
+            "THREADOLET",
+            "VALVE",
+            "VLV",
+        )
+    ):
         return "Fitting"
     if any(kw in desc for kw in ("GASKET", "SEAL", "O-RING", "GSKT")):
         return "Gasket"
-    if any(kw in desc for kw in ("BOLT", "BLT", "NUT", "STUD", "WASHER", "FASTENER", "BRACKET", "SUPPORT", "HANGER", "CLAMP", "U-BOLT", "ANCHOR")):
+    if any(
+        kw in desc
+        for kw in (
+            "BOLT",
+            "BLT",
+            "NUT",
+            "STUD",
+            "WASHER",
+            "FASTENER",
+            "BRACKET",
+            "SUPPORT",
+            "HANGER",
+            "CLAMP",
+            "U-BOLT",
+            "ANCHOR",
+        )
+    ):
         return "Hardware"
     return "Other"
 
@@ -223,35 +307,46 @@ class BOMExtractor:
         # --- Step 2: Find all Header Rows globally ------------------------
         headers = self._find_all_headers_globally(texts)
         if not headers:
-            logger.warning("Could not identify BOM header rows in %s", self.filepath.name)
+            logger.warning(
+                "Could not identify BOM header rows in %s", self.filepath.name
+            )
             return []
 
         all_table_rows: list[dict[str, str]] = []
 
         # --- Step 3: Extract from each detected table ---------------------
         for i, (header_y, header_cells) in enumerate(headers):
-            logger.info("Processing table %d at Y=%.2f: %s", i + 1, header_y, [c["text"] for c in header_cells])
+            logger.info(
+                "Processing table %d at Y=%.2f: %s",
+                i + 1,
+                header_y,
+                [c["text"] for c in header_cells],
+            )
 
             # Determine X range based on this table's header
             header_xs = [c["x"] for c in header_cells]
             min_table_x = min(header_xs) - 150.0
             max_table_x = max(header_xs) + 150.0
-            
-            # The next header below this one defines the lower Y boundary for bounds check
+
+            # The next header below this one defines
+            # the lower Y boundary for bounds check
             next_header_y = headers[i + 1][0] if i + 1 < len(headers) else None
-            
+
             min_header_y = min(c["y"] for c in header_cells)
-            
+
             # Filter texts that belong to this table's bounding box
             table_texts = [
-                t for t in texts
+                t
+                for t in texts
                 if t["y"] < min_header_y - 15.0
                 and (next_header_y is None or t["y"] > next_header_y + 15.0)
                 and min_table_x <= t["x"] <= max_table_x
             ]
 
             if not table_texts:
-                logger.warning("No table text entities found below header at Y=%.2f", header_y)
+                logger.warning(
+                    "No table text entities found below header at Y=%.2f", header_y
+                )
                 continue
 
             # 1. Compute Y-tolerance based on the initial table texts bounding box
@@ -267,18 +362,26 @@ class BOMExtractor:
 
                 # Stop collecting if we hit the table end marker
                 if _END_MARKERS.search(row_text):
-                    logger.info("Stopping table text collection due to end marker: %s", row_text)
+                    logger.info(
+                        "Stopping table text collection due to end marker: %s", row_text
+                    )
                     break
 
                 if prev_y is not None:
                     # Stop if there is a huge vertical gap (e.g. > 350.0 units)
                     if prev_y - y_key > 350.0:
-                        logger.info("Stopping table text collection due to vertical gap: %.2f", prev_y - y_key)
+                        logger.info(
+                            "Stopping table text collection due to vertical gap: %.2f",
+                            prev_y - y_key,
+                        )
                         break
-                    
+
                     # Stop if we hit another table header
                     if self._score_header_cells(cells) >= 3:
-                        logger.info("Stopping table text collection due to new header: %s", [c["text"] for c in cells])
+                        logger.info(
+                            "Stopping table text collection due to new header: %s",
+                            [c["text"] for c in cells],
+                        )
                         break
 
                 final_table_texts.extend(cells)
@@ -288,7 +391,9 @@ class BOMExtractor:
                 continue
 
             # Cluster column centers using data table texts + header cells
-            col_centers = self._cluster_x_coordinates(final_table_texts + header_cells, min_count=3)
+            col_centers = self._cluster_x_coordinates(
+                final_table_texts + header_cells, min_count=3
+            )
             col_mapping = self._build_column_mapping(header_cells, col_centers)
 
             rows_by_y = self._cluster_by_y(final_table_texts, y_tol)
@@ -297,7 +402,9 @@ class BOMExtractor:
             table_rows = self._extract_data_rows_with_mapping(
                 rows_by_y, sorted_keys, -1, col_centers, col_mapping
             )
-            logger.info("Extracted %d rows from table at Y=%.2f", len(table_rows), header_y)
+            logger.info(
+                "Extracted %d rows from table at Y=%.2f", len(table_rows), header_y
+            )
             all_table_rows.extend(table_rows)
 
         logger.info(
@@ -333,7 +440,8 @@ class BOMExtractor:
     @staticmethod
     def _find_all_headers_globally(texts: list[dict]) -> list[tuple[float, list[dict]]]:
         """
-        Find all Y coordinates containing header cells, returning a list of (header_y, header_cells)
+        Find all Y coordinates containing header cells,
+        returning a list of (header_y, header_cells)
         sorted by Y descending (top to bottom).
         """
         # Find all cells matching any header pattern exactly when normalized
@@ -386,11 +494,14 @@ class BOMExtractor:
 
     @staticmethod
     def _cluster_x_coordinates(texts: list[dict], min_count: int = 5) -> list[float]:
-        """Group X-coordinates that align vertically using greedy max-width to prevent chaining."""
+        """Group X-coordinates that align vertically.
+
+        Uses greedy max-width to prevent chaining.
+        """
         xs = sorted(t["x"] for t in texts)
         if not xs:
             return []
-        
+
         clusters = []
         current_cluster = [xs[0]]
         for x in xs[1:]:
@@ -400,16 +511,18 @@ class BOMExtractor:
                 clusters.append(current_cluster)
                 current_cluster = [x]
         clusters.append(current_cluster)
-        
+
         valid_centers = []
         for cluster in clusters:
             if len(cluster) >= min_count:
                 valid_centers.append(sum(cluster) / len(cluster))
-        
+
         return sorted(valid_centers)
 
     @staticmethod
-    def _build_column_mapping(header_cells: list[dict], col_centers: list[float]) -> dict[int, str]:
+    def _build_column_mapping(
+        header_cells: list[dict], col_centers: list[float]
+    ) -> dict[int, str]:
         col_mapping: dict[int, str] = {}
         for cell in header_cells:
             normalized = normalize_for_match(cell["text"])
@@ -442,7 +555,8 @@ class BOMExtractor:
                 break
 
         if desc_idx is not None:
-            # Map unmapped columns to the left of the description column to serial numbers
+            # Map unmapped columns to the left of the
+            # description column to serial numbers
             pno_indices = [idx for idx in range(desc_idx) if idx not in col_mapping]
             if len(pno_indices) == 1:
                 col_mapping[pno_indices[0]] = "pno_sub"
@@ -468,9 +582,7 @@ class BOMExtractor:
         return max(computed_tol, 3.0)
 
     @staticmethod
-    def _cluster_by_y(
-        texts: list[dict], tolerance: float
-    ) -> dict[float, list[dict]]:
+    def _cluster_by_y(texts: list[dict], tolerance: float) -> dict[float, list[dict]]:
         """Group text entries whose Y-coords are within tolerance."""
         clusters: dict[float, list[dict]] = {}
         for t in sorted(texts, key=lambda x: -x["y"]):
@@ -513,14 +625,18 @@ class BOMExtractor:
                 if pat.search(row_text):
                     current_group = row_text.strip()
                     current_multiplier = get_group_multiplier(current_group)
-                    
+
                     # Extract riser prefix if it's a riser group
                     prefix = extract_riser_prefix(current_group)
                     if prefix:
                         current_main_pno = prefix
                         logger.info("Setting riser prefix: '%s'", current_main_pno)
-                        
-                    logger.info("Found group: '%s' (multiplier=%d)", current_group, current_multiplier)
+
+                    logger.info(
+                        "Found group: '%s' (multiplier=%d)",
+                        current_group,
+                        current_multiplier,
+                    )
                     is_group = True
                     break
             if is_group:
@@ -537,16 +653,23 @@ class BOMExtractor:
                     if dist < best_dist:
                         best_dist = dist
                         best_idx = c_idx
-                
-                if best_idx is not None and best_dist <= 20.0 and best_idx in col_mapping:
+
+                if (
+                    best_idx is not None
+                    and best_dist <= 20.0
+                    and best_idx in col_mapping
+                ):
                     field = col_mapping[best_idx]
                     row_vals[field].append(cell["text"])
 
             # Flatten lists to strings
             row_flat = {k: " ".join(v).strip() for k, v in row_vals.items()}
 
-            # A valid BOM row must have at least one of description, size, or material populated
-            if not any(row_flat.get(f, "").strip() for f in ("description", "size", "material")):
+            # A valid BOM row must have at least one of
+            # description, size, or material populated
+            if not any(
+                row_flat.get(f, "").strip() for f in ("description", "size", "material")
+            ):
                 continue
 
             # Process serial numbers (pno)
@@ -560,7 +683,11 @@ class BOMExtractor:
                 current_main_pno = flat_pno
 
             # If the serial number itself indicates a combined riser, update multiplier
-            if current_main_pno and ("&" in current_main_pno or "AND" in current_main_pno or "," in current_main_pno):
+            if current_main_pno and (
+                "&" in current_main_pno
+                or "AND" in current_main_pno
+                or "," in current_main_pno
+            ):
                 current_multiplier = 2
 
             # Determine final serial number
@@ -636,9 +763,21 @@ class BOMExtractor:
                         desc = pno_raw
                         pno_raw = ""
 
-        # Repair: handle cases where the description (like "NUTS") is mistakenly placed in the size column
+        # Repair: handle cases where the description
+        # (like "NUTS") is placed in the size column
         if not desc and size_raw:
-            if size_raw.upper() in ("NUTS", "NUT", "BOLTS", "BOLT", "GASKET", "GASKETS", "ELBOW", "TEE", "FLANGE", "PIPE"):
+            if size_raw.upper() in (
+                "NUTS",
+                "NUT",
+                "BOLTS",
+                "BOLT",
+                "GASKET",
+                "GASKETS",
+                "ELBOW",
+                "TEE",
+                "FLANGE",
+                "PIPE",
+            ):
                 desc = size_raw
                 size_raw = ""
 

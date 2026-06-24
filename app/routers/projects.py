@@ -55,7 +55,10 @@ async def delete_existing_project(project: str):
     """Delete a project and all its BOM data."""
     try:
         delete_project(project)
-        return {"status": "success", "detail": f"Project '{project}' and all its BOM data deleted."}
+        return {
+            "status": "success",
+            "detail": f"Project '{project}' and all its BOM data deleted.",
+        }
     except Exception as e:
         logger.exception("Failed to delete project.")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
