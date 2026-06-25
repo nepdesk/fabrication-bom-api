@@ -3,6 +3,8 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Built by NEPDESK](https://img.shields.io/badge/Built%20by-NEPDESK-green.svg)](https://nepdesk.com)
 
+![AutoCAD BOM Extractor UI](./screenshot.png)
+
 A high-performance, production-ready FastAPI microservice designed for heavy engineering, boiler, and piping fabrication workflows. It accepts bulk `.zip` uploads containing AutoCAD drawing files (`.dwg` or `.dxf`), converts `.dwg` files on the fly, parses them, and extracts structured Bill of Materials (BOM) data.
 
 ---
@@ -45,7 +47,7 @@ fabrication-bom-api/
 ## Quick Start
 
 ### 1. Prerequisites
-Ensure you have Python 3.10+ installed on your system. 
+Ensure you have Python 3.10+ installed on your system.
 For `.dwg` to `.dxf` conversion, one of the following tools should be installed on your system path:
 - **LibreDWG** (Preferred) - On macOS, install with: `brew install libredwg`
 - **ODA File Converter** (CLI or ezdxf plugin wrapper)
@@ -130,7 +132,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 
 ## License & Copyleft Protections
 
-This project is licensed under the **GNU GPLv3** license. 
+This project is licensed under the **GNU GPLv3** license.
 
 Under the terms of the GNU General Public License v3, the unique extraction logic and source code contained in this repository:
 - **Must remain open-source**: Any modified versions or derivative works must also be licensed under the GPLv3.
